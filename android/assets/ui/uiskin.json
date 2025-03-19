@@ -1,0 +1,35 @@
+{
+  "com.badlogic.gdx.scenes.scene2d.ui.Skin": {
+    "fonts": {
+      "default": { "file": "ui/default.fnt" }
+    },
+    "colors": {
+      "white": { "r": 1, "g": 1, "b": 1, "a": 1 },
+      "black": { "r": 0, "g": 0, "b": 0, "a": 1 }
+    },
+    "drawables": {
+      "button-up": { "type": "texture", "file": "ui/button-up.png" },
+      "button-down": { "type": "texture", "file": "ui/button-down.png" },
+      "window-background": { "type": "texture", "file": "ui/window.png" }
+    },
+    "labels": {
+      "default": {
+        "font": "default",
+        "fontColor": "white"
+      }
+    },
+    "buttons": {
+      "default": {
+        "up": "button-up",
+        "down": "button-down",
+        "font": "default",
+        "fontColor": "black"
+      }
+    },
+    "windows": {
+      "default": {
+        "background": "window-background"
+      }
+    }
+  }
+}
