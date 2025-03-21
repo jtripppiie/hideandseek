@@ -41,6 +41,9 @@ public class ForestMap implements Screen, InputProcessor {
     private boolean hiderVisible = true;
     private boolean seekerActive = false;
     private boolean gameWon = false;
+    private Array<Button> endGameButtons = new Array<>();
+    private boolean pendingTransition = false;
+    private float transitionDelay = 0f;
 
     public ForestMap() {
         batch = new SpriteBatch();
@@ -56,6 +59,7 @@ public class ForestMap implements Screen, InputProcessor {
         seekerCharacter = new Seeker();
 
         Gdx.input.setInputProcessor(this);
+        initializeButtons();
     }
 
     @Override
@@ -73,7 +77,25 @@ public class ForestMap implements Screen, InputProcessor {
         batch.draw(backgroundTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         renderCharacters();
         renderUI();
+        if (currentState == GameState.FINISHED) {
+            renderEndGameUI();
+        }
         batch.end();
+        
+        // Add this check and update to handle the pending transition
+        if (pendingTransition) {
+            transitionDelay += delta;
+            if (transitionDelay >= 0.1f) {
+                executeScreenTransition();
+            }
+        }
+    }
+
+    // Add this method to handle the screen transition
+    private void executeScreenTransition() {
+        com.jay.hideandseek.Main game = (com.jay.hideandseek.Main)Gdx.app.getApplicationListener();
+        MapSelectionScreen mapSelectionScreen = new MapSelectionScreen(game);
+        game.setScreen(mapSelectionScreen);
     }
 
     private void updateGameState(float delta) {
@@ -135,6 +157,65 @@ public class ForestMap implements Screen, InputProcessor {
         } else if (currentState == GameState.SEEKING) {
             font.draw(batch, "Seek time left: " + (int)seekTimer, 10, Gdx.graphics.getHeight() - 10);
         }
+    }
+
+    private void renderEndGameUI() {
+        String resultText = gameWon ? "Seeker Wins!" : "Hider Wins!";
+        font.getData().setScale(2.5f);
+        font.setColor(0, 0, 0, 0.5f);
+        glyphLayout.setText(font, resultText);
+        font.draw(batch, resultText, 
+            Gdx.graphics.getWidth() / 2 - glyphLayout.width / 2 + 3, 
+            Gdx.graphics.getHeight() * 2/3 + 3);
+        
+        font.setColor(0.2f, 0.6f, 1f, 1);
+        font.draw(batch, resultText, 
+            Gdx.graphics.getWidth() / 2 - glyphLayout.width / 2, 
+            Gdx.graphics.getHeight() * 2/3);
+        font.getData().setScale(1);
+        
+        // Draw buttons
+        for (Button button : endGameButtons) {
+            button.render(batch, font, backgroundTexture);
+        }
+        
+        // Handle button clicks
+        if (Gdx.input.justTouched()) {
+            float touchX = Gdx.input.getX();
+            float touchY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            for (Button button : endGameButtons) {
+                if (button.handleClick(touchX, touchY)) {
+                    AudioManager.getInstance().playSound("click");
+                    break;
+                }
+            }
+        }
+    }
+
+    private void initializeButtons() {
+        float centerX = Gdx.graphics.getWidth() / 2f - 100;
+        endGameButtons.add(new Button(
+            centerX, Gdx.graphics.getHeight() / 2f, 200, 60,
+            "Play Again", this::resetGame
+        ));
+        endGameButtons.add(new Button(
+            centerX, Gdx.graphics.getHeight() / 2f - 100, 200, 60,
+            "Back to Menu", () -> {
+                pendingTransition = true;
+                transitionDelay = 0f;
+            }
+        ));
+    }
+
+    private void resetGame() {
+        currentState = GameState.HIDING;
+        hideTimer = HIDE_TIME;
+        seekTimer = SEEK_TIME;
+        hiderVisible = true;
+        seekerActive = false;
+        gameWon = false;
+        hiderCharacter.getPosition().set(Gdx.graphics.getWidth() / 2, Gdx.graphics.getHeight() / 2);
+        seekerCharacter.getPosition().set(100, 100);
     }
 
     @Override
@@ -200,5 +281,44 @@ public class ForestMap implements Screen, InputProcessor {
         font.dispose();
         hiderCharacter.dispose();
         seekerCharacter.dispose();
+    }
+
+    private static class Button {
+        private final Rectangle bounds;
+        private final String text;
+        private final Runnable action;
+        
+        public Button(float x, float y, float width, float height, String text, Runnable action) {
+            this.bounds = new Rectangle(x, y, width, height);
+            this.text = text;
+            this.action = action;
+        }
+        
+        public void render(SpriteBatch batch, BitmapFont font, Texture texture) {
+            batch.setColor(0.2f, 0.2f, 0.3f, 0.8f);
+            batch.draw(texture, bounds.x, bounds.y, bounds.width, bounds.height);
+            
+            batch.setColor(0.5f, 0.7f, 1f, 0.5f);
+            batch.draw(texture, bounds.x, bounds.y + bounds.height - 2, bounds.width, 2);
+            batch.draw(texture, bounds.x, bounds.y, bounds.width, 2);
+            batch.draw(texture, bounds.x, bounds.y, 2, bounds.height);
+            batch.draw(texture, bounds.x + bounds.width - 2, bounds.y, 2, bounds.height);
+            
+            batch.setColor(1, 1, 1, 1);
+            font.getData().setScale(1.2f);
+            GlyphLayout layout = new GlyphLayout(font, text);
+            font.draw(batch, text, 
+                bounds.x + (bounds.width - layout.width) / 2, 
+                bounds.y + (bounds.height + layout.height) / 2);
+            font.getData().setScale(1f);
+        }
+        
+        public boolean handleClick(float x, float y) {
+            if (bounds.contains(x, y)) {
+                action.run();
+                return true;
+            }
+            return false;
+        }
     }
 }
